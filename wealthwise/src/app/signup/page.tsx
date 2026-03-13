@@ -76,7 +76,7 @@ export default function SignupPage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Rahul Sharma"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -86,7 +86,7 @@ export default function SignupPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -95,8 +95,8 @@ export default function SignupPage() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="Min. 8 characters"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Minimum 8 characters"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 ocus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
 
