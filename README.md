@@ -1,4 +1,4 @@
-# 🏺 WealthWise
+#  WealthWise
 
 > A premium, real-time investing command center for tracking portfolio movement, financial goals, and market context.
 
@@ -6,7 +6,7 @@ WealthWise is designed to give you a clear, consolidated view of your financial 
 
 ---
 
-## ✨ Key Features
+##  Key Features
 
 - **💹 Real-time Portfolio Overview**: Live tracking of your total invested value, current holdings, and performance metrics.
 - **🎯 Financial Goal Tracking**: Define and monitor your progress toward specific financial objectives with automatic contribution calculations.
@@ -99,8 +99,6 @@ WealthWise is designed to give you a clear, consolidated view of your financial 
 
 ## 🤝 Contributing
 
-This project is part of the **VTU Intern Team 8 (JAVA-2026)**. Contributions are welcome!
-
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
@@ -116,5 +114,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Built with ❤️ by the VTU Intern Team
+  
 </p>
