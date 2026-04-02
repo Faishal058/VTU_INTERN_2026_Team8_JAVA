@@ -1,0 +1,485 @@
+﻿@import "tailwindcss";
+
+:root {
+  --background: #04140f;
+  --foreground: #f5fff1;
+  --font-sans: "Segoe UI", "Trebuchet MS", "Helvetica Neue", sans-serif;
+  --font-mono: "Consolas", "Courier New", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.ww-home,
+.ww-app-shell,
+.ww-auth-shell {
+  position: relative;
+}
+
+.ww-home [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 48px, 0) scale(0.985);
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.ww-home [data-reveal].is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.ww-home__aurora {
+  position: absolute;
+  inset: -12% -10% auto;
+  height: 880px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(180, 255, 69, 0.26), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(72, 241, 213, 0.15), transparent 24%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06), transparent 35%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.ww-home__grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 36px;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
+  opacity: 0.32;
+}
+
+.ww-home__panel,
+.ww-home__timeline-card,
+.ww-home__analytics-frame,
+.ww-home__story-panel,
+.ww-home__hero-phone,
+.ww-home__hero-card,
+.ww-auth-card {
+  backdrop-filter: blur(22px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+}
+
+.ww-home__hero-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: start;
+}
+
+.ww-home__hero-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.ww-home__hero-phone {
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: linear-gradient(180deg, rgba(14, 30, 23, 0.96), rgba(7, 16, 13, 0.94));
+  padding: 1.5rem;
+  min-height: 100%;
+}
+
+.ww-home__hero-card {
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  padding: 1.25rem;
+}
+
+.ww-home__phone-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ww-home__chart {
+  position: relative;
+  overflow: hidden;
+  height: 170px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(180, 255, 69, 0.2), rgba(180, 255, 69, 0.02)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: auto, 36px 36px, 36px 36px;
+}
+
+.ww-home__float-one {
+  animation: wwFloatOne 6s ease-in-out infinite;
+}
+
+.ww-home__float-two {
+  animation: wwFloatTwo 7s ease-in-out infinite;
+}
+
+.ww-home__ticker {
+  display: flex;
+  width: max-content;
+  animation: wwTicker 26s linear infinite;
+}
+
+.ww-home__ticker-item {
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  white-space: nowrap;
+}
+
+.ww-home__panel,
+.ww-home__story-panel {
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  padding: 2rem;
+}
+
+.ww-home__timeline-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.25rem;
+  align-items: start;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  padding: 1.5rem;
+}
+
+.ww-home__timeline-step {
+  min-width: 68px;
+  border-radius: 999px;
+  border: 1px solid rgba(180, 255, 69, 0.2);
+  background: rgba(180, 255, 69, 0.08);
+  padding: 0.9rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #d8ff9a;
+}
+
+.ww-home__sticky-device {
+  position: relative;
+  max-width: 440px;
+}
+
+.ww-home__sticky-device .ww-home__hero-phone {
+  min-height: auto;
+}
+
+.ww-home__analytics-frame {
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  padding: 2rem;
+}
+
+.ww-home__analytics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ww-home__svg-path {
+  stroke-dasharray: 960;
+  stroke-dashoffset: 960;
+  animation: wwPathDraw 2.6s ease forwards;
+}
+
+.ww-home__svg-area {
+  opacity: 0;
+  animation: wwAreaRise 1.4s ease forwards;
+  animation-delay: 0.35s;
+}
+
+.ww-home__chart-dot {
+  transform-origin: center;
+  opacity: 0;
+  animation: wwDotPop 0.7s ease forwards;
+  animation-delay: 1.5s;
+}
+
+.ww-home__chart-dot--late {
+  animation-delay: 1.85s;
+}
+
+.ww-home__svg-bar {
+  fill: url(#barGlow);
+  transform-origin: center bottom;
+  animation: wwBarLift 2.4s ease-in-out infinite;
+}
+
+.ww-home__svg-grid line {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+}
+
+.ww-auth-input {
+  width: 100%;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.95rem 1rem;
+  color: #fff;
+  outline: none;
+}
+
+.ww-auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.ww-auth-input:focus {
+  border-color: rgba(180, 255, 69, 0.55);
+  box-shadow: 0 0 0 4px rgba(180, 255, 69, 0.1);
+}
+
+.ww-auth-primary,
+.ww-auth-secondary {
+  width: 100%;
+  border-radius: 1.2rem;
+  padding: 0.95rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: 180ms ease;
+}
+
+.ww-auth-primary {
+  background: #b4ff45;
+  color: #062415;
+}
+
+.ww-auth-primary:hover {
+  background: #c6ff74;
+}
+
+.ww-auth-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ww-auth-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ww-auth-alert {
+  margin-bottom: 1rem;
+  border-radius: 1.2rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+}
+
+.ww-auth-alert--error {
+  border: 1px solid rgba(251, 113, 133, 0.22);
+  background: rgba(244, 63, 94, 0.12);
+  color: #fecdd3;
+}
+
+.ww-auth-alert--success {
+  border: 1px solid rgba(180, 255, 69, 0.2);
+  background: rgba(180, 255, 69, 0.1);
+  color: #e7ffc0;
+}
+
+.ww-app-shell .bg-white,
+.ww-app-shell .bg-white\/90,
+.ww-app-shell .bg-slate-50,
+.ww-app-shell .bg-slate-100 {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)) !important;
+  color: #f5fff1 !important;
+}
+
+.ww-app-shell .bg-slate-900 {
+  background: #071510 !important;
+}
+
+.ww-app-shell .text-slate-900,
+.ww-app-shell .text-slate-700,
+.ww-app-shell .text-slate-600,
+.ww-app-shell .text-slate-500,
+.ww-app-shell .text-slate-400,
+.ww-app-shell .text-gray-900,
+.ww-app-shell .text-gray-700,
+.ww-app-shell .text-gray-500 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.ww-app-shell .text-slate-500,
+.ww-app-shell .text-slate-400,
+.ww-app-shell .text-gray-500 {
+  color: rgba(255, 255, 255, 0.56) !important;
+}
+
+.ww-app-shell .border-slate-100,
+.ww-app-shell .border-slate-200,
+.ww-app-shell .border-emerald-100,
+.ww-app-shell .border-dashed,
+.ww-app-shell .border-white\/70 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ww-app-shell .shadow-\[0_24px_70px_rgba\(15\,23\,42\,0\.06\)\],
+.ww-app-shell .shadow-\[0_24px_80px_rgba\(21\,128\,61\,0\.08\)\],
+.ww-app-shell .shadow-lg,
+.ww-app-shell .shadow-xl {
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22) !important;
+}
+
+.ww-app-shell input,
+.ww-app-shell select,
+.ww-app-shell textarea {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+.ww-app-shell input::placeholder,
+.ww-app-shell textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.ww-app-shell button.border,
+.ww-app-shell a.border {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+@keyframes wwFloatOne {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes wwFloatTwo {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes wwTicker {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes wwPathDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes wwAreaRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes wwDotPop {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wwBarLift {
+  0%,
+  100% {
+    transform: scaleY(0.85);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scaleY(1.06);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ww-home__hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ww-home__sticky-device {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .ww-home__analytics-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ww-home__timeline-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ww-home__timeline-step {
+    width: fit-content;
+  }
+
+  .ww-home [data-reveal] {
+    transform: translate3d(0, 28px, 0) scale(0.99);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ww-home [data-reveal],
+  .ww-home__float-one,
+  .ww-home__float-two,
+  .ww-home__ticker,
+  .ww-home__svg-path,
+  .ww-home__svg-area,
+  .ww-home__chart-dot,
+  .ww-home__svg-bar {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
