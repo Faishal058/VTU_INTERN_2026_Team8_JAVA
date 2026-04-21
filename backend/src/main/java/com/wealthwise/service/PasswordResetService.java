@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PasswordResetService {
 
     private final JavaMailSender mailSender;
+    private final AuthService authService;
 
     // In-memory store for reset tokens (in production, use a database table)
     private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
@@ -20,8 +21,9 @@ public class PasswordResetService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    public PasswordResetService(JavaMailSender mailSender) {
+    public PasswordResetService(JavaMailSender mailSender, AuthService authService) {
         this.mailSender = mailSender;
+        this.authService = authService;
     }
 
     public void sendResetLink(String email) {

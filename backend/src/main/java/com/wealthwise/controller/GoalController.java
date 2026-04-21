@@ -6,8 +6,6 @@ import com.wealthwise.repository.FinancialGoalRepository;
 import com.wealthwise.repository.GoalFundLinkRepository;
 import com.wealthwise.service.GoalProjectionService;
 import com.wealthwise.service.HoldingsService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +23,6 @@ import java.util.*;
 @RequestMapping("/api/goals")
 public class GoalController {
 
-    private static final Logger log = LoggerFactory.getLogger(GoalController.class);
-
     private final FinancialGoalRepository goalRepo;
     private final GoalFundLinkRepository linkRepo;
     private final GoalProjectionService projService;
@@ -42,54 +38,33 @@ public class GoalController {
 
     @GetMapping
     public ResponseEntity<?> list(Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] GET /api/goals  ▶ user={}", userId);
         var goals = goalRepo.findByUserId(userId);
-        log.info("[Goals]   {} goal(s) found", goals.size());
-
-        // Enrich each goal: recalculate corpus from linked holdings, then project
+        // Enrich with projection
         List<Map<String, Object>> enriched = new ArrayList<>();
         for (var g : goals) {
-            // ── Refresh corpus from linked fund values ──────────────────────
-            BigDecimal oldCorpus = g.getCurrentCorpus() != null ? g.getCurrentCorpus() : BigDecimal.ZERO;
-            updateCorpusFromHoldings(g, userId);
-            BigDecimal newCorpus = g.getCurrentCorpus() != null ? g.getCurrentCorpus() : BigDecimal.ZERO;
-            // Only write DB if corpus actually changed (avoid write on every GET)
-            if (newCorpus.compareTo(oldCorpus) != 0) {
-                g.setUpdatedAt(OffsetDateTime.now());
-                goalRepo.save(g);
-                log.info("[Goals] corpus updated for goal='{}': ₹{} → ₹{}", g.getName(), oldCorpus, newCorpus);
-            }
             var map = goalToMap(g);
             var proj = projService.project(g);
             map.putAll(proj);
             enriched.add(map);
         }
-        log.info("[API] GET /api/goals  ✔ {}ms  {} goal(s) with projections",
-            System.currentTimeMillis() - t0, enriched.size());
         return ResponseEntity.ok(enriched);
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, Authentication auth) {
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] POST /api/goals  ▶ user={} goalType={} name={}",
-            userId, body.get("goalType"), body.get("name"));
         FinancialGoal g = new FinancialGoal();
         g.setUserId(userId);
         applyBody(body, g);
         g.setCreatedAt(OffsetDateTime.now());
         g.setUpdatedAt(OffsetDateTime.now());
-        var saved = goalRepo.save(g);
-        log.info("[API] POST /api/goals  ✔ created goalId={} name={}", saved.getId(), saved.getName());
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(goalRepo.save(g));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody Map<String, Object> body, Authentication auth) {
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] PUT /api/goals/{}  ▶ user={}", id, userId);
         return goalRepo.findById(id)
             .filter(g -> g.getUserId().equals(userId))
             .map(g -> {
@@ -114,84 +89,50 @@ public class GoalController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable UUID id, Authentication auth) {
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] DELETE /api/goals/{}  ▶ user={}", id, userId);
         return goalRepo.findById(id)
             .filter(g -> g.getUserId().equals(userId))
-            .map(g -> { goalRepo.delete(g); log.info("[API] DELETE /api/goals/{} ✔ deleted", id); return ResponseEntity.ok(Map.of("message", "Deleted")); })
+            .map(g -> { goalRepo.delete(g); return ResponseEntity.ok(Map.of("message", "Deleted")); })
             .orElse(ResponseEntity.notFound().build());
     }
 
     /** M16 — deterministic projection */
     @GetMapping("/{id}/projection")
     public ResponseEntity<?> projection(@PathVariable UUID id, Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] GET /api/goals/{}/projection  ▶ user={}", id, userId);
         return goalRepo.findById(id)
             .filter(g -> g.getUserId().equals(userId))
             .map(g -> {
                 updateCorpusFromHoldings(g, userId);
-                var result = projService.project(g);
-                log.info("[API] GET /api/goals/{}/projection  ✔ {}ms  onTrack={}",
-                    id, System.currentTimeMillis() - t0, result.get("onTrack"));
-                return ResponseEntity.ok(result);
+                return ResponseEntity.ok(projService.project(g));
             }).orElse(ResponseEntity.notFound().build());
     }
 
     /** M16 — Monte Carlo */
     @GetMapping("/{id}/monte-carlo")
     public ResponseEntity<?> monteCarlo(@PathVariable UUID id, Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] GET /api/goals/{}/monte-carlo  ▶ user={} (5000 simulations)", id, userId);
         return goalRepo.findById(id)
             .filter(g -> g.getUserId().equals(userId))
             .map(g -> {
                 updateCorpusFromHoldings(g, userId);
-                var result = projService.monteCarlo(g);
-                log.info("[API] GET /api/goals/{}/monte-carlo  ✔ {}ms  probability={}%",
-                    id, System.currentTimeMillis() - t0, result.get("probability"));
-                return ResponseEntity.ok(result);
+                return ResponseEntity.ok(projService.monteCarlo(g));
             }).orElse(ResponseEntity.notFound().build());
     }
 
-    /** M15 — Link (or update) a fund to a goal */
+    /** M15 — Link a fund to a goal */
     @PostMapping("/{id}/link-fund")
     public ResponseEntity<?> linkFund(@PathVariable UUID id, @RequestBody Map<String, Object> body, Authentication auth) {
         UUID userId = UUID.fromString(auth.getName());
-        String schemeCode = body.getOrDefault("schemeCode", "").toString();
+        GoalFundLink link = new GoalFundLink();
+        link.setUserId(userId);
+        link.setGoalId(id);
+        link.setSchemeCode(body.getOrDefault("schemeCode", "").toString());
+        link.setFundName(body.getOrDefault("fundName", "").toString());
+        link.setFolioNumber(body.getOrDefault("folioNumber", "DEFAULT").toString());
         Object pct = body.get("allocationPct");
-        BigDecimal allocPct = pct != null ? new BigDecimal(pct.toString()) : BigDecimal.valueOf(100);
-
-        // Upsert: update allocationPct if a link already exists for this goal+scheme
-        return linkRepo.findByGoalId(id).stream()
-            .filter(lk -> lk.getSchemeCode().equals(schemeCode))
-            .findFirst()
-            .map(existing -> {
-                existing.setAllocationPct(allocPct);
-                return ResponseEntity.ok((Object) linkRepo.save(existing));
-            })
-            .orElseGet(() -> {
-                GoalFundLink link = new GoalFundLink();
-                link.setUserId(userId);
-                link.setGoalId(id);
-                link.setSchemeCode(schemeCode);
-                link.setFundName(body.getOrDefault("fundName", "").toString());
-                link.setFolioNumber(body.getOrDefault("folioNumber", "DEFAULT").toString());
-                link.setAllocationPct(allocPct);
-                link.setCreatedAt(OffsetDateTime.now());
-                return ResponseEntity.ok((Object) linkRepo.save(link));
-            });
-    }
-
-    /** Unlink a fund from a goal */
-    @DeleteMapping("/{id}/links/{schemeCode}")
-    public ResponseEntity<?> unlinkFund(@PathVariable UUID id, @PathVariable String schemeCode, Authentication auth) {
-        UUID userId = UUID.fromString(auth.getName());
-        linkRepo.findByGoalId(id).stream()
-            .filter(lk -> lk.getSchemeCode().equals(schemeCode) && lk.getUserId().equals(userId))
-            .forEach(linkRepo::delete);
-        return ResponseEntity.ok(Map.of("message", "Unlinked"));
+        link.setAllocationPct(pct != null ? new BigDecimal(pct.toString()) : BigDecimal.valueOf(100));
+        link.setCreatedAt(OffsetDateTime.now());
+        return ResponseEntity.ok(linkRepo.save(link));
     }
 
     @GetMapping("/{id}/links")

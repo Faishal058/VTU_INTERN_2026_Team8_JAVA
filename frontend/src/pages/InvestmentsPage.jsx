@@ -73,7 +73,7 @@ export default function InvestmentsPage() {
             { l: 'Current Value',  v: fmt(summary.currentValue) },
             { l: 'Total Invested', v: fmt(summary.totalInvested) },
             { l: 'Total Gain',     v: fmt(Number(summary.currentValue) - Number(summary.totalInvested)), c: col(Number(summary.currentValue) - Number(summary.totalInvested)) },
-            { l: 'XIRR p.a.',      v: summary.portfolioXirr != null ? (summary.portfolioXirr >= 0 ? '+' : '') + Number(summary.portfolioXirr).toFixed(2) + '%' : '—', c: '#a3e635' },
+            { l: 'XIRR p.a.',      v: summary.portfolioXirr != null ? summary.portfolioXirr + '%' : '—', c: '#a3e635' },
             { l: 'Risk Score',     v: summary.riskLabel },
           ].map(({ l, v, c }) => (
             <div key={l} className="ww-card" style={{ padding: '1rem 1.25rem', flex: 1, minWidth: '120px' }}>

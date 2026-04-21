@@ -53,19 +53,6 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
     }
   };
 
-  const unlinkFund = async (schemeCode) => {
-    setSaving(schemeCode);
-    try {
-      await api.delete(`/api/goals/${goal.id}/links/${encodeURIComponent(schemeCode)}`);
-      await fetchData();
-      onLinked?.();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSaving(null);
-    }
-  };
-
   const goalLabel = goal.name || goal.goalType || 'Goal';
   const linkedValue = links.reduce((sum, lk) => {
     const h = holdings.find(h => h.schemeCode === lk.schemeCode);
@@ -176,19 +163,6 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
                               <><Link size={13} /> Link</>
                             )}
                           </motion.button>
-                          {linked && (
-                            <motion.button
-                              className="glm-link-btn"
-                              style={{ background: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', color: '#f87171', marginLeft: 4 }}
-                              onClick={() => unlinkFund(h.schemeCode)}
-                              disabled={isSaving}
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.96 }}
-                              title="Remove link"
-                            >
-                              <Trash2 size={13} />
-                            </motion.button>
-                          )}
                         </div>
                       </motion.div>
                     );

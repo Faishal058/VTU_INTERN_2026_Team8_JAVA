@@ -2,14 +2,13 @@ package com.wealthwise.service;
 
 import com.wealthwise.model.InvestmentLot;
 import com.wealthwise.model.NavDaily;
+import com.wealthwise.model.SchemeMaster;
 import com.wealthwise.repository.InvestmentLotRepository;
 import com.wealthwise.repository.NavDailyRepository;
 import com.wealthwise.repository.SchemeMasterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,14 +26,11 @@ import java.util.stream.Collectors;
 @Service
 public class AnalyticsService {
 
-    private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
     private static final double RISK_FREE_RATE = 0.07; // 7% annual
-    @SuppressWarnings("unused")
     private static final double TRADING_DAYS   = 252.0;
 
     @Autowired private InvestmentLotRepository    lotRepo;
     @Autowired private NavDailyRepository         navRepo;
-    @SuppressWarnings("unused")
     @Autowired private SchemeMasterRepository     schemeRepo;
     @Autowired private HoldingsService            holdingsService;
 
@@ -45,10 +41,7 @@ public class AnalyticsService {
      *  volatility, Sharpe ratio, max drawdown, diversification, risk appetite.
      */
     public Map<String, Object> getRiskProfile(UUID userId) {
-        long startMs = System.currentTimeMillis();
-        log.info("[Analytics] ▶ getRiskProfile started for user={}", userId);
         var holdings = holdingsService.getHoldings(userId);
-        log.info("[Analytics]   Risk profile: {} holding(s) loaded", holdings.size());
 
         BigDecimal totalCurrent = holdings.stream()
             .map(HoldingsService.Holding::currentValue)
@@ -93,10 +86,6 @@ public class AnalyticsService {
         result.put("amcCount",              holdings.stream().map(HoldingsService.Holding::amcName)
                                                 .filter(Objects::nonNull).collect(Collectors.toSet()).size());
         result.put("categoryBreakdown",     buildCategoryBreakdown(holdings, totalCurrent));
-        long elapsedMs = System.currentTimeMillis() - startMs;
-        log.info("[Analytics] ✔ getRiskProfile done in {}ms for user={} | sharpe={} volatility={} drawdown={}",
-            elapsedMs, userId,
-            result.get("sharpeRatio"), result.get("volatility"), result.get("maxDrawdown"));
         return result;
     }
 
@@ -108,10 +97,7 @@ public class AnalyticsService {
      * amount on day-1 would have been worth today.
      */
     public List<Map<String, Object>> getSipIntelligence(UUID userId) {
-        long startMs = System.currentTimeMillis();
-        log.info("[Analytics] ▶ getSipIntelligence started for user={}", userId);
         var holdings = holdingsService.getHoldings(userId);
-        log.info("[Analytics]   SIP intelligence: {} holding(s) loaded", holdings.size());
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (var h : holdings) {
@@ -170,9 +156,6 @@ public class AnalyticsService {
             BigDecimal advB = (BigDecimal) b.get("advantage");
             return advB.compareTo(advA);
         });
-        long elapsedMs = System.currentTimeMillis() - startMs;
-        log.info("[Analytics] ✔ getSipIntelligence done in {}ms for user={} | {} SIP fund(s) analysed",
-            elapsedMs, userId, result.size());
         return result;
     }
 
@@ -184,21 +167,12 @@ public class AnalyticsService {
      * Falls back to prev-known NAV if a month has no data.
      */
     public List<Map<String, Object>> getGrowthTimeline(UUID userId) {
-        long startMs = System.currentTimeMillis();
-        log.info("[Analytics] ▶ getGrowthTimeline started for user={}", userId);
         var holdings = holdingsService.getHoldings(userId);
-        if (holdings.isEmpty()) {
-            log.info("[Analytics]   No holdings found — returning empty timeline");
-            return List.of();
-        }
+        if (holdings.isEmpty()) return List.of();
 
         // All lots sorted by date
         List<InvestmentLot> allLots = lotRepo.findAllActiveLots(userId);
-        if (allLots.isEmpty()) {
-            log.info("[Analytics]   No active lots — returning empty timeline");
-            return List.of();
-        }
-        log.info("[Analytics]   Growth timeline: {} lot(s) across {} holding(s)", allLots.size(), holdings.size());
+        if (allLots.isEmpty()) return List.of();
 
         LocalDate start = allLots.stream()
             .map(InvestmentLot::getPurchaseDate)
@@ -263,9 +237,6 @@ public class AnalyticsService {
             cursor = cursor.plusMonths(1);
         }
 
-        long elapsedMs = System.currentTimeMillis() - startMs;
-        log.info("[Analytics] ✔ getGrowthTimeline done in {}ms for user={} | {} monthly data point(s) built",
-            elapsedMs, userId, timeline.size());
         return timeline;
     }
 

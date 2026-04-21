@@ -11,8 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -24,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -36,8 +35,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/transactions")
 public class TransactionController {
-
-    private static final Logger log = LoggerFactory.getLogger(TransactionController.class);
 
     private final InvestmentTransactionRepository txRepo;
     private final InvestmentLotRepository lotRepo;
@@ -66,11 +63,8 @@ public class TransactionController {
 
     @GetMapping
     public ResponseEntity<?> list(Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] GET /api/transactions  ▶ user={}", userId);
         var txns = txRepo.findByUserIdOrderByTransactionDateDesc(userId);
-        log.info("[Transactions]   {} transaction(s) fetched from DB", txns.size());
 
         // Batch-load scheme metadata (category + risk) for all unique codes in one pass
         Map<String, com.wealthwise.model.SchemeMaster> schemeCache = new HashMap<>();
@@ -104,8 +98,6 @@ public class TransactionController {
             return m;
         }).collect(java.util.stream.Collectors.toList());
 
-        log.info("[API] GET /api/transactions  ✔ {}ms  {} record(s) returned",
-            System.currentTimeMillis() - t0, result.size());
         return ResponseEntity.ok(result);
     }
 
@@ -141,10 +133,7 @@ public class TransactionController {
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] POST /api/transactions  ▶ user={} type={} scheme={}",
-            userId, body.get("transactionType"), body.get("schemeCode"));
 
         String type = getString(body, "transactionType");
         String schemeCode = getString(body, "schemeCode");
@@ -177,17 +166,12 @@ public class TransactionController {
             units = amount.divide(nav, 6, RoundingMode.HALF_UP);
         }
 
-        // ── Resolve / auto-generate folio number ─────────────────────────
-        folio = resolveOrGenerateFolio(userId, schemeCode, folio);
-        log.info("[Transactions]   Folio='{}' for scheme={}", folio, schemeCode);
-
         InvestmentTransaction tx = buildTransaction(userId, schemeCode, fundName, folio, type,
             amount, nav, units, txDate, getString(body, "note"), "Manual");
         tx = txRepo.save(tx);
 
         applyLotLogic(userId, schemeCode, type, units, nav, fundName, tx.getFolioNumber(), txDate, tx);
-        log.info("[API] POST /api/transactions  ✔ {}ms  txId={} type={} scheme={} folio={}",
-            System.currentTimeMillis() - t0, tx.getId(), type, schemeCode, tx.getFolioNumber());
+
         return ResponseEntity.ok(tx);
     }
 
@@ -197,10 +181,7 @@ public class TransactionController {
      */
     @PostMapping("/import-csv")
     public ResponseEntity<?> importCsv(@RequestParam("file") MultipartFile file, Authentication auth) {
-        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        log.info("[API] POST /api/transactions/import-csv  ▶ user={} file={}",
-            userId, file.getOriginalFilename());
 
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Uploaded file is empty"));
@@ -306,13 +287,9 @@ public class TransactionController {
                         amount = units.multiply(nav).setScale(4, RoundingMode.HALF_UP);
                     }
 
-                    // ── Resolve / auto-generate folio number ─────────────
-                    folio = resolveOrGenerateFolio(userId, schemeCode, folio);
-
                     InvestmentTransaction tx = buildTransaction(userId, schemeCode, fundName, folio, normType, amount, nav, units, txDate, note, "CSV");
                     tx = txRepo.save(tx);
                     applyLotLogic(userId, schemeCode, normType, units, nav, fundName, tx.getFolioNumber(), txDate, tx);
-                    rowResult.put("folioNumber", tx.getFolioNumber());
 
                     rowResult.put("status", "OK");
                     rowResult.put("message", normType.replace("_", " ") + " imported");
@@ -331,8 +308,6 @@ public class TransactionController {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("imported", imported); summary.put("failed", failed); summary.put("skipped", skipped);
         summary.put("rows", rowResults);
-        log.info("[API] POST /api/transactions/import-csv  ✔ {}ms  imported={} failed={} skipped={}",
-            System.currentTimeMillis() - t0, imported, failed, skipped);
         return ResponseEntity.ok(summary);
     }
 
@@ -343,7 +318,7 @@ public class TransactionController {
         tx.setUserId(userId);
         tx.setSchemeCode(schemeCode);
         tx.setFundName(fundName);
-        tx.setFolioNumber(folio != null && !folio.isBlank() ? folio : generateFolioNumber(schemeCode));
+        tx.setFolioNumber(folio != null && !folio.isBlank() ? folio : "DEFAULT");
         tx.setTransactionType(type);
         tx.setAmount(amount);
         tx.setNav(nav);
@@ -354,50 +329,6 @@ public class TransactionController {
         tx.setNote(note);
         tx.setCreatedAt(OffsetDateTime.now());
         return tx;
-    }
-
-    /**
-     * Resolves the folio number for a transaction:
-     * 1. Use whatever was explicitly provided (non-blank).
-     * 2. Reuse the existing folio from active lots for the same user+scheme
-     *    (keeps all lots for the same fund under one folio number).
-     * 3. Auto-generate a WealthWise dummy folio: WW-{amfiCode6}-{6randomDigits}.
-     */
-    private String resolveOrGenerateFolio(UUID userId, String schemeCode, String folio) {
-        if (folio != null && !folio.isBlank()) return folio;
-
-        // Try to reuse the existing folio for this user+scheme from active lots
-        try {
-            List<InvestmentLot> existing = lotRepo.findActiveLotsFifo(userId, schemeCode);
-            if (!existing.isEmpty()) {
-                String existingFolio = existing.get(0).getFolioNumber();
-                // Reuse any existing folio that is real (non-blank and not the old "DEFAULT" sentinel)
-                if (existingFolio != null && !existingFolio.isBlank()
-                        && !existingFolio.equals("DEFAULT")) {
-                    log.info("[Transactions]   Reusing existing folio='{}' for scheme={}",
-                        existingFolio, schemeCode);
-                    return existingFolio;
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[Transactions]   Could not look up existing folio for scheme={}: {}",
-                schemeCode, e.getMessage());
-        }
-
-        // Auto-generate a new dummy folio
-        return generateFolioNumber(schemeCode);
-    }
-
-    /**
-     * Generates a WealthWise dummy folio number.
-     * Format: WW{6 random digits}  e.g. WW483921
-     * Kept short so it displays cleanly in the table without truncation.
-     */
-    private String generateFolioNumber(String schemeCode) {
-        String digits = String.format("%06d", (int)(Math.random() * 1_000_000));
-        String generated = "WW" + digits;
-        log.info("[Transactions]   Auto-generated folio='{}' for scheme={}", generated, schemeCode);
-        return generated;
     }
 
     private void applyLotLogic(UUID userId, String schemeCode, String type, BigDecimal units,

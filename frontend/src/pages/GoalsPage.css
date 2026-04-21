@@ -620,98 +620,70 @@
 .goals-new-btn:hover { opacity: 0.9; }
 
 /* ─────────────────────────────────────────────────────────────
-   Goal Analysis Modal — new overlay & wrapper (replaces gw-overlay/gw-modal)
+   Goal Analysis Modal — Simulation Input Panel
 ────────────────────────────────────────────────────────────── */
-.gam-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
-}
-
-.gam-modal-wrap {
-  background: var(--ww-bg);
-  border: 1px solid var(--ww-border);
-  border-radius: var(--ww-radius-xl);
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Assumptions strip
-────────────────────────────────────────────────────────────── */
-.gam-assumptions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--ww-border-subtle);
+.gam-sim-panel {
   background: var(--ww-surface);
-  flex-shrink: 0;
-}
-
-.gam-assum-item {
+  border: 1px solid var(--ww-border-accent);
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 12px;
 }
 
-.gam-assum-label {
-  font-size: 0.6rem;
+.gam-sim-title {
+  font-size: 0.8rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ww-text-ghost);
+  color: var(--ww-accent);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.gam-sim-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gam-sim-field { display: flex; flex-direction: column; gap: 6px; }
+
+.gam-sim-meta {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--ww-text-muted);
 }
+.gam-sim-meta strong { color: var(--ww-text-primary); }
 
-.gam-assum-val {
-  font-size: 0.82rem;
+.gam-run-btn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 12px;
+  background: var(--ww-accent);
+  color: var(--ww-accent-dark);
+  border: none;
+  font-size: 0.875rem;
   font-weight: 700;
-  color: var(--ww-text-primary);
-}
-
-.gam-assum-badge {
-  font-size: 0.5rem;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(251,191,36,.15);
-  color: var(--ww-yellow);
-  letter-spacing: 0.06em;
-}
-
-.gam-refresh-btn {
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--ww-border);
-  background: transparent;
-  color: var(--ww-text-muted);
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  gap: 6px;
+  transition: opacity 0.2s;
 }
-.gam-refresh-btn:hover { background: var(--ww-surface-hover); color: var(--ww-text-primary); }
-.gam-refresh-btn:disabled { opacity: 0.4; cursor: default; }
+.gam-run-btn:disabled { opacity: 0.6; cursor: default; }
 
-.gam-spin { animation: gwSpin 0.8s linear infinite; }
-
+.gam-pre-run {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--ww-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.gam-pre-run strong { color: var(--ww-accent); }
 
 /* ─────────────────────────────────────────────────────────────
    Goal Card — Link badge button
