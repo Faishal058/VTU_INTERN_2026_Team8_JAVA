@@ -5,6 +5,8 @@ import com.wealthwise.service.HoldingsService;
 import com.wealthwise.service.XirrService;
 import com.wealthwise.repository.InvestmentLotRepository;
 import com.wealthwise.repository.InvestmentTransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/holdings")
 public class HoldingsController {
+
+    private static final Logger log = LoggerFactory.getLogger(HoldingsController.class);
 
     private final HoldingsService holdingsService;
     private final XirrService xirrService;
@@ -44,7 +48,9 @@ public class HoldingsController {
     /** All current holdings with gain/loss + XIRR per fund */
     @GetMapping
     public ResponseEntity<?> list(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/holdings  ▶ user={}", userId);
         var holdings = holdingsService.getHoldings(userId);
 
         // Enrich with XIRR per fund
@@ -65,27 +71,35 @@ public class HoldingsController {
             m.put("gainLoss",     h.gainLoss());
             m.put("gainLossPct",  h.gainLossPct() != null ? Math.round(h.gainLossPct() * 100.0) / 100.0 : null);
 
-            // Build XIRR cash flows from lots
+            // Build XIRR cash flows from lots — skip lots with null purchaseDate
             List<XirrService.CashFlow> flows = h.lots().stream()
+                .filter(l -> l.getPurchaseDate() != null
+                          && l.getUnitsRemaining() != null
+                          && l.getCostPerUnit()    != null)
                 .map(l -> new XirrService.CashFlow(
                     l.getPurchaseDate(),
                     -l.getUnitsRemaining().multiply(l.getCostPerUnit()).doubleValue()))
                 .collect(Collectors.toList());
             // Add current value as final positive flow
-            flows.add(new XirrService.CashFlow(LocalDate.now(), h.currentValue().doubleValue()));
+            BigDecimal cv = h.currentValue() != null ? h.currentValue() : BigDecimal.ZERO;
+            flows.add(new XirrService.CashFlow(LocalDate.now(), cv.doubleValue()));
 
-            Double xirr = xirrService.calculateXirr(flows);
+            Double xirr = flows.size() >= 2 ? xirrService.calculateXirr(flows) : null;
             m.put("xirr", xirr != null ? Math.round(xirr * 10000.0) / 100.0 : null); // as %
             return m;
         }).collect(Collectors.toList());
 
+        log.info("[API] GET /api/holdings  ✔ {}ms  {} fund(s) returned",
+            System.currentTimeMillis() - t0, result.size());
         return ResponseEntity.ok(result);
     }
 
     /** Portfolio-level summary */
     @GetMapping("/summary")
     public ResponseEntity<?> summary(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/holdings/summary  ▶ user={}", userId);
         var holdings = holdingsService.getHoldings(userId);
 
         BigDecimal totalInvested = holdings.stream().map(HoldingsService.Holding::investedValue)
@@ -141,28 +155,46 @@ public class HoldingsController {
         res.put("allocation", allocationMap);
         res.put("earliestInvestmentDate", earliest.toString());
         res.put("holdingYears", Math.round(holdingYears * 100.0) / 100.0);
+        log.info("[API] GET /api/holdings/summary  ✔ {}ms  invested=₹{} current=₹{} xirr={}%",
+            System.currentTimeMillis() - t0, totalInvested.toPlainString(),
+            totalCurrent.toPlainString(), portfolioXirr != null ? Math.round(portfolioXirr * 10000.0) / 100.0 : "n/a");
         return ResponseEntity.ok(res);
     }
 
     /** Monthly NAV-based portfolio growth timeline */
     @GetMapping("/growth")
     public ResponseEntity<?> growth(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        return ResponseEntity.ok(analyticsService.getGrowthTimeline(userId));
+        log.info("[API] GET /api/holdings/growth  ▶ user={}", userId);
+        var result = analyticsService.getGrowthTimeline(userId);
+        log.info("[API] GET /api/holdings/growth  ✔ {}ms  {} month(s)",
+            System.currentTimeMillis() - t0, result.size());
+        return ResponseEntity.ok(result);
     }
 
     /** Full analytics risk profile: Sharpe, volatility, max drawdown, diversification */
     @GetMapping("/risk-profile")
     public ResponseEntity<?> riskProfile(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        return ResponseEntity.ok(analyticsService.getRiskProfile(userId));
+        log.info("[API] GET /api/holdings/risk-profile  ▶ user={}", userId);
+        var result = analyticsService.getRiskProfile(userId);
+        log.info("[API] GET /api/holdings/risk-profile  ✔ {}ms",
+            System.currentTimeMillis() - t0);
+        return ResponseEntity.ok(result);
     }
 
     /** SIP vs lumpsum intelligence per fund */
     @GetMapping("/sip-intelligence")
     public ResponseEntity<?> sipIntelligence(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
-        return ResponseEntity.ok(analyticsService.getSipIntelligence(userId));
+        log.info("[API] GET /api/holdings/sip-intelligence  ▶ user={}", userId);
+        var result = analyticsService.getSipIntelligence(userId);
+        log.info("[API] GET /api/holdings/sip-intelligence  ✔ {}ms  {} fund(s)",
+            System.currentTimeMillis() - t0, result.size());
+        return ResponseEntity.ok(result);
     }
 
     private String categorizeBroad(String category) {

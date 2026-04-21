@@ -1,11 +1,15 @@
 package com.wealthwise.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class GoalEngineService {
+
+    private static final Logger log = LoggerFactory.getLogger(GoalEngineService.class);
 
     // ════════════════════════════════════════════════════════════
     // Helper: Convert future nominal money → today's real money
@@ -33,6 +37,9 @@ public class GoalEngineService {
             int months,
             double targetAmount,
             double annualInflationRate) {
+        long t0 = System.currentTimeMillis();
+        log.info("[GoalEngine] ▶ Monte Carlo  10,000 simulations  months={} target={} portfolio={}",
+            months, targetAmount, initialPortfolio);
 
         double monthlyInflation = annualInflationRate / 12;
         double inflationAdjustedTarget = targetAmount * Math.pow(1 + monthlyInflation, months);
@@ -70,12 +77,15 @@ public class GoalEngineService {
                 .count();
         double probability = (successCount * 100.0) / simulations;
 
-        return new MonteCarloResult(
+        var result = new MonteCarloResult(
                 Math.round(p10Real),
                 Math.round(p50Real),
                 Math.round(p90Real),
                 Math.round(probability * 10.0) / 10.0
         );
+        log.info("[GoalEngine] ✔ Monte Carlo done in {}ms  probability={}%  p50=₹{}",
+            System.currentTimeMillis() - t0, result.probability(), result.likely());
+        return result;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -89,6 +99,8 @@ public class GoalEngineService {
             int months,
             double targetAmount,
             double annualInflationRate) {
+        long t0 = System.currentTimeMillis();
+        log.info("[GoalEngine] ▶ Deterministic projection  months={} target={}", months, targetAmount);
 
         double r = monthlyMean;
         int n = months;
@@ -125,7 +137,7 @@ public class GoalEngineService {
                         Math.round(projHighInfReal), Math.round(targetAmount - projHighInfReal))
         );
 
-        return new DeterministicResult(
+        var result = new DeterministicResult(
                 Math.round(fvCorpusReal),
                 Math.round(fvSipReal),
                 Math.round(totalReal),
@@ -133,6 +145,9 @@ public class GoalEngineService {
                 gapReal <= 0,
                 sensitivity
         );
+        log.info("[GoalEngine] ✔ Deterministic done in {}ms  totalProjected=₹{}  onTrack={}",
+            System.currentTimeMillis() - t0, result.totalProjected(), result.onTrack());
+        return result;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -145,6 +160,8 @@ public class GoalEngineService {
             int months,
             double targetAmount,
             double annualInflationRate) {
+        long t0 = System.currentTimeMillis();
+        log.info("[GoalEngine] ▶ Required SIP calculation  months={} target={}", months, targetAmount);
 
         double monthlyInflation = annualInflationRate / 12;
         double inflationAdjustedTarget = targetAmount * Math.pow(1 + monthlyInflation, months);
@@ -160,7 +177,7 @@ public class GoalEngineService {
                 - (initialPortfolio * Math.pow(1 + r, n) + fvSipCurrent);
         double lumpSumToday = Math.max(r > 0 ? remainingNeedFuture / Math.pow(1 + r, n) : remainingNeedFuture, 0);
 
-        return new RequiredSipResult(
+        var result = new RequiredSipResult(
                 Math.round(sipNeeded),
                 Math.round(monthlyContribution),
                 Math.round(sipGap),
@@ -168,6 +185,9 @@ public class GoalEngineService {
                 extraMonthsNeeded(initialPortfolio, monthlyContribution, r, targetAmount, annualInflationRate, n),
                 sipGap <= 0
         );
+        log.info("[GoalEngine] ✔ Required SIP done in {}ms  requiredSip=₹{}  gap=₹{}  currentEnough={}",
+            System.currentTimeMillis() - t0, result.requiredSip(), result.sipGap(), result.currentSipEnough());
+        return result;
     }
 
     // ════════════════════════════════════════════════════════════
