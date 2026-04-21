@@ -54,9 +54,9 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
   };
 
   const unlinkFund = async (schemeCode) => {
-    setSaving(schemeCode);
+    setSaving(schemeCode + '_del');
     try {
-      await api.delete(`/api/goals/${goal.id}/links/${encodeURIComponent(schemeCode)}`);
+      await api.delete(`/api/goals/${goal.id}/links/${schemeCode}`);
       await fetchData();
       onLinked?.();
     } catch (e) {
@@ -149,7 +149,7 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
                           </div>
                         </div>
 
-                        {/* Allocation + Link button */}
+                        {/* Allocation + Link/Update/Unlink buttons */}
                         <div className="glm-actions">
                           <div className="glm-alloc-wrap">
                             <input
@@ -161,6 +161,8 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
                             <span className="glm-pct-label">%</span>
                           </div>
                           <div className="glm-contribution">≈ {formatINR(contribution)}</div>
+
+                          {/* Link / Update button */}
                           <motion.button
                             className={`glm-link-btn ${linked ? 'linked' : ''}`}
                             onClick={() => linkFund(h)}
@@ -168,7 +170,7 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
                             whileHover={{ scale: 1.04 }}
                             whileTap={{ scale: 0.96 }}
                           >
-                            {isSaving ? (
+                            {saving === h.schemeCode ? (
                               <div className="gw-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
                             ) : linked ? (
                               <><CheckCircle size={13} /> Update</>
@@ -176,17 +178,22 @@ export default function GoalLinkModal({ goal, onClose, onLinked }) {
                               <><Link size={13} /> Link</>
                             )}
                           </motion.button>
+
+                          {/* Unlink (delete) button — only shown when already linked */}
                           {linked && (
                             <motion.button
-                              className="glm-link-btn"
-                              style={{ background: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', color: '#f87171', marginLeft: 4 }}
+                              className="glm-unlink-btn"
                               onClick={() => unlinkFund(h.schemeCode)}
-                              disabled={isSaving}
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.96 }}
-                              title="Remove link"
+                              disabled={!!saving}
+                              whileHover={{ scale: 1.06 }}
+                              whileTap={{ scale: 0.94 }}
+                              title="Unlink this fund from goal"
                             >
-                              <Trash2 size={13} />
+                              {saving === h.schemeCode + '_del' ? (
+                                <div className="gw-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                              ) : (
+                                <Trash2 size={13} />
+                              )}
                             </motion.button>
                           )}
                         </div>

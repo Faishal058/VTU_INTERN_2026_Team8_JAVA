@@ -14,16 +14,42 @@ const platformFeatures = [
     title: 'See your whole money system',
     description: 'Bring portfolio value, active SIPs, upcoming alerts, and goal progress into one clear operating view.',
     points: ['Live dashboard summaries', 'Goal-linked investments', 'Transaction and tax visibility'],
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <path d="M14 17.5h7M17.5 14v7" />
+      </svg>
+    ),
+    accent: 'rgba(180,255,69,0.18)',
+    color: '#b4ff45',
   },
   {
     title: 'Move from guesswork to planning',
     description: 'Model monthly contributions, inflation, return expectations, and timeline tradeoffs before you commit capital.',
     points: ['Inflation-aware goal planning', 'SIP simulations', 'Scenario-based contribution planning'],
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 17 L8 11 L13 14 L19 6" />
+        <circle cx="19" cy="6" r="2" fill="currentColor" stroke="none" opacity="0.7" />
+        <path d="M3 20h18" />
+      </svg>
+    ),
+    accent: 'rgba(96,165,250,0.18)',
+    color: '#60a5fa',
   },
   {
     title: 'Act while the market is moving',
     description: 'Use market snapshots, fund search, and alert workflows to stay on top of opportunities instead of reacting late.',
     points: ['Fund master sync', 'Market pulse cards', 'Unread alert workflows'],
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      </svg>
+    ),
+    accent: 'rgba(167,139,250,0.18)',
+    color: '#a78bfa',
   },
 ];
 
@@ -162,7 +188,16 @@ export default function LandingPage() {
         <div className="ww-grid-3 ww-gap-6" style={{ marginTop: '3.5rem' }}>
           {platformFeatures.map((feature, index) => (
             <motion.article key={feature.title} className="ww-feature-panel" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={reveal} transition={{ delay: index * 0.12 }}>
-              <div style={{ height: '3.5rem', width: '3.5rem', borderRadius: '1rem', border: '1px solid var(--ww-border)', background: 'rgba(255,255,255,0.05)' }} />
+              <div style={{
+                height: '3.5rem', width: '3.5rem', borderRadius: '1rem',
+                border: `1px solid ${feature.color}40`,
+                background: feature.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: feature.color,
+                boxShadow: `0 0 18px ${feature.color}30`,
+              }}>
+                {feature.icon}
+              </div>
               <h3 style={{ marginTop: '2rem', fontSize: '1.5rem', fontWeight: 600, color: '#fff' }}>{feature.title}</h3>
               <p className="ww-body-sm" style={{ marginTop: '1rem' }}>{feature.description}</p>
               <div className="ww-space-y-3" style={{ marginTop: '2rem' }}>

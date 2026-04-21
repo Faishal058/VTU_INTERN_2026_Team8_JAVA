@@ -426,8 +426,7 @@ export default function TransactionsPage() {
     try {
       await api.post('/api/transactions', {
         schemeCode: selectedScheme.amfiCode, fundName: selectedScheme.schemeName,
-        folioNumber: autoFolio || '',   // empty = backend will auto-generate WW-XXXXXX-XXXXXX
-        transactionType: txType,
+        folioNumber: autoFolio || '', transactionType: txType,
         transactionDate: txDate, amount: Number(amount),
         nav: autoNav ? Number(autoNav) : null, units: units ? Number(units) : null, note,
       });
@@ -534,14 +533,14 @@ export default function TransactionsPage() {
 
                 {/* Folio */}
                 <div>
-                  <label className="ww-input-label">Folio Number</label>
+                  <label className="ww-input-label">Folio Number <span style={{ fontWeight: 400, color: 'var(--ww-text-ghost)', fontSize: '0.68rem' }}>(auto-generated if blank)</span></label>
                   {autoFolioList.length > 0 ? (
                     <select value={autoFolio} onChange={e => setAutoFolio(e.target.value)} className="ww-input">
                       {autoFolioList.map(f => <option key={f} value={f}>{f}</option>)}
-                      <option value="">New Folio</option>
+                      <option value="">Auto-generate new folio</option>
                     </select>
                   ) : (
-                    <input value={autoFolio} onChange={e => setAutoFolio(e.target.value)} placeholder="Auto-generated if blank (e.g. WW-119597-XXXXXX)" className="ww-input" />
+                    <input value={autoFolio} onChange={e => setAutoFolio(e.target.value)} placeholder="Auto-generated (e.g. WW1A2B3C100119)" className="ww-input" />
                   )}
                 </div>
 
@@ -658,8 +657,8 @@ export default function TransactionsPage() {
                       </td>
 
                       {/* Folio */}
-                      <td style={{ padding: '0.5rem 0.6rem', color: T.textGhost, textAlign: 'right', fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums' }}>
-                        {t.folioNumber && t.folioNumber !== 'DEFAULT' && t.folioNumber !== '' ? t.folioNumber : '—'}
+                      <td style={{ padding: '0.5rem 0.6rem', color: T.textGhost, textAlign: 'right', fontSize: '0.68rem' }}>
+                        {t.folioNumber && t.folioNumber !== 'DEFAULT' ? t.folioNumber : '—'}
                       </td>
 
                       {/* Source */}
