@@ -32,15 +32,35 @@ public class XirrService {
         if (!hasNeg || !hasPos) return null;
 
         LocalDate base = flows.stream().map(CashFlow::date).min(LocalDate::compareTo).orElseThrow();
+        LocalDate last = flows.stream().map(CashFlow::date).max(LocalDate::compareTo).orElseThrow();
+        long totalDays = ChronoUnit.DAYS.between(base, last);
+
+        // Bought today — solver can't converge with t=0 for all flows
+        if (totalDays == 0) return null;
+
+        // Short period (< 7 days): use simple annualized return to avoid solver instability
+        if (totalDays < 7) {
+            double totalInvested = flows.stream()
+                .filter(f -> f.amount() < 0).mapToDouble(f -> -f.amount()).sum();
+            double totalCurrent  = flows.stream()
+                .filter(f -> f.amount() > 0).mapToDouble(CashFlow::amount).sum();
+            if (totalInvested <= 0) return null;
+            double simpleReturn = (totalCurrent - totalInvested) / totalInvested;
+            double annualized   = simpleReturn * (365.0 / totalDays);
+            return Math.max(-0.99, Math.min(5.0, annualized));   // same clamp
+        }
 
         // Convert to days array
         double[] amounts = flows.stream().mapToDouble(CashFlow::amount).toArray();
         double[] days = flows.stream().mapToDouble(f -> ChronoUnit.DAYS.between(base, f.date())).toArray();
 
-        // Newton-Raphson
+        // Newton-Raphson with two starting guesses, then bisection capped at 500%
         Double result = newtonRaphson(amounts, days, 0.1);
         if (result == null) result = newtonRaphson(amounts, days, -0.5);
-        if (result == null) result = bisection(amounts, days, -0.999, 100.0);
+        if (result == null) result = bisection(amounts, days, -0.999, 5.0);
+
+        // Sanity clamp: cap at -99% .. +500%
+        if (result != null) result = Math.max(-0.99, Math.min(5.0, result));
         return result;
     }
 

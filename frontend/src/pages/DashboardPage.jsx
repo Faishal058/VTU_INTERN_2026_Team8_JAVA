@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
                             <td className={`h-num bold ${!isNaN(pctRet) && pctRet >= 0 ? 'green' : 'red'}`}>
                               {noNav ? '—' : !isNaN(pctRet) ? formatPctSigned(pctRet) : '—'}
                             </td>
-                            <td className={`h-num ${h.xirr >= 0 ? 'green' : 'red'}`}>
+                            <td className={`h-num ${h.xirr != null ? (h.xirr >= 0 ? 'green' : 'red') : ''}`}>
                               {h.xirr != null ? formatPctSigned(h.xirr) : '—'}
                             </td>
                           </motion.tr>
@@ -1188,8 +1188,8 @@ export default function DashboardPage() {
                 <div className="nav-sync-hint">
                   <Wifi size={13} />
                   <span>
-                    Some funds show "NAV Pending" — AMFI codes not yet in database.
-                    Run <code>POST /api/schemes/seed</code> to refresh NAV data.
+                    Some funds show "NAV Pending" — NAV data not yet available.
+                    They will auto-refresh from AMFI on the next page load.
                   </span>
                 </div>
               )}

@@ -2,9 +2,10 @@ package com.wealthwise.controller;
 
 import com.wealthwise.repository.SchemeMasterRepository;
 import com.wealthwise.service.AmfiSeedService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -16,6 +17,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/schemes")
 public class SchemeMasterController {
+
+    private static final Logger log = LoggerFactory.getLogger(SchemeMasterController.class);
 
     private final SchemeMasterRepository repo;
     private final AmfiSeedService seedService;
@@ -31,7 +34,10 @@ public class SchemeMasterController {
                                     @RequestParam(defaultValue = "15") int limit) {
         if (q == null || q.trim().length() < 2)
             return ResponseEntity.ok(java.util.Collections.emptyList());
-        return ResponseEntity.ok(repo.searchSchemes(q.trim(), PageRequest.of(0, Math.min(limit, 50))));
+        log.info("[API] GET /api/schemes/search  q='{}' limit={}", q.trim(), limit);
+        var results = repo.searchSchemes(q.trim(), PageRequest.of(0, Math.min(limit, 50)));
+        log.info("[API] GET /api/schemes/search  ✔ {} result(s) for '{}'", results.size(), q.trim());
+        return ResponseEntity.ok(results);
     }
 
     /** Get single scheme by AMFI code */
@@ -60,7 +66,12 @@ public class SchemeMasterController {
     /** Admin trigger: re-seed from AMFI. */
     @PostMapping("/seed")
     public ResponseEntity<?> seed() {
+        log.info("[API] POST /api/schemes/seed  ▶ AMFI seed triggered");
+        long t0 = System.currentTimeMillis();
         var result = seedService.seedFromAmfi();
+        log.info("[API] POST /api/schemes/seed  ✔ {}ms  status={} schemes={} navs={} errors={}",
+            System.currentTimeMillis() - t0, result.status(),
+            result.schemesSaved(), result.navsInserted(), result.errors());
         return ResponseEntity.ok(Map.of(
             "status", result.status(),
             "schemesSaved", result.schemesSaved(),

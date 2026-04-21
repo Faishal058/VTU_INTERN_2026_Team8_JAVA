@@ -2,6 +2,8 @@ package com.wealthwise.controller;
 
 import com.wealthwise.repository.InvestmentLotRepository;
 import com.wealthwise.repository.InvestmentTransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/tax")
 public class TaxController {
 
+    private static final Logger log = LoggerFactory.getLogger(TaxController.class);
+
     private final InvestmentTransactionRepository txRepo;
     private final InvestmentLotRepository lotRepo;
 
@@ -32,7 +36,9 @@ public class TaxController {
     /** FY summary: total STCG, LTCG, tax liability */
     @GetMapping("/summary")
     public ResponseEntity<?> summary(@RequestParam(defaultValue = "2025") int fy, Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/tax/summary  ▶ user={} fy={}", userId, fy);
         LocalDate fyStart = LocalDate.of(fy - 1, 4, 1);
         LocalDate fyEnd   = LocalDate.of(fy, 3, 31);
 
@@ -64,13 +70,18 @@ public class TaxController {
         res.put("totalTaxLiability",stcgTax.add(ltcgTax));
         res.put("redemptionCount",  txns.size());
         res.put("note","Equity funds: STCG @20% (held <1yr), LTCG @12.5% above ₹1.25L (held ≥1yr). Debt funds taxed at slab rate (not included).");
+        log.info("[API] GET /api/tax/summary  ✔ {}ms  fy=FY{} stcgTax=₹{} ltcgTax=₹{} redemptions={}",
+            System.currentTimeMillis() - t0, fy, stcgTax.toPlainString(),
+            ltcgTax.toPlainString(), txns.size());
         return ResponseEntity.ok(res);
     }
 
     /** List all taxable transactions in a FY */
     @GetMapping("/transactions")
     public ResponseEntity<?> taxTxns(@RequestParam(defaultValue = "2025") int fy, Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/tax/transactions  ▶ user={} fy={}", userId, fy);
         LocalDate fyStart = LocalDate.of(fy - 1, 4, 1);
         LocalDate fyEnd   = LocalDate.of(fy, 3, 31);
 
@@ -79,14 +90,19 @@ public class TaxController {
             .filter(t -> t.getTransactionType().equals("REDEMPTION") ||
                          t.getTransactionType().equals("SWITCH_OUT"))
             .collect(Collectors.toList());
+        log.info("[API] GET /api/tax/transactions  ✔ {}ms  {} taxable transaction(s)",
+            System.currentTimeMillis() - t0, list.size());
         return ResponseEntity.ok(list);
     }
 
     /** M19 — Tax loss harvesting suggestions: find lots with unrealised loss */
     @GetMapping("/harvest-suggestions")
     public ResponseEntity<?> harvestSuggestions(Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/tax/harvest-suggestions  ▶ user={}", userId);
         var lots = lotRepo.findAllActiveLots(userId);
+        log.info("[Tax]   {} active lot(s) loaded for harvest analysis", lots.size());
 
         // Find lots with cost > last_nav implied by purchase info
         // We emit lots where holding < 1 year and cost basis suggests a loss
@@ -114,13 +130,17 @@ public class TaxController {
                 .min(LocalDate::compareTo).orElse(null));
             suggestions.add(m);
         }
+        log.info("[API] GET /api/tax/harvest-suggestions  ✔ {}ms  {} fund(s) analysed",
+            System.currentTimeMillis() - t0, suggestions.size());
         return ResponseEntity.ok(suggestions);
     }
 
     /** Export tax report as CSV */
     @GetMapping("/export")
     public ResponseEntity<byte[]> export(@RequestParam(defaultValue = "2025") int fy, Authentication auth) {
+        long t0 = System.currentTimeMillis();
         UUID userId = UUID.fromString(auth.getName());
+        log.info("[API] GET /api/tax/export  ▶ user={} fy={}", userId, fy);
         LocalDate fyStart = LocalDate.of(fy - 1, 4, 1);
         LocalDate fyEnd   = LocalDate.of(fy, 3, 31);
 
@@ -130,9 +150,15 @@ public class TaxController {
             .filter(t -> t.getTransactionType().equals("REDEMPTION") || t.getTransactionType().equals("SWITCH_OUT"))
             .forEach(t -> csv.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
                 t.getTransactionDate(), esc(t.getFundName()), t.getTransactionType(),
-                t.getAmount(), t.getUnits(), t.getNav(), t.getStcgGain(), t.getLtcgGain())));
+                t.getAmount() != null ? t.getAmount() : "",
+                t.getUnits()  != null ? t.getUnits()  : "",
+                t.getNav()    != null ? t.getNav()    : "",
+                t.getStcgGain() != null ? t.getStcgGain() : "",
+                t.getLtcgGain() != null ? t.getLtcgGain() : "")));
 
         byte[] bytes = csv.toString().getBytes();
+        log.info("[API] GET /api/tax/export  ✔ {}ms  CSV {} bytes",
+            System.currentTimeMillis() - t0, bytes.length);
         return ResponseEntity.ok()
             .header("Content-Type", "text/csv")
             .header("Content-Disposition", "attachment; filename=tax_" + fy + ".csv")

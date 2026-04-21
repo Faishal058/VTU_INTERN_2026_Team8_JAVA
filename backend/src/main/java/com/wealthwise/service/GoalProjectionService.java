@@ -1,6 +1,8 @@
 package com.wealthwise.service;
 
 import com.wealthwise.model.FinancialGoal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,6 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class GoalProjectionService {
 
+    private static final Logger log = LoggerFactory.getLogger(GoalProjectionService.class);
     private static final int MC_SIMULATIONS = 5000;
 
     /**
@@ -25,8 +28,24 @@ public class GoalProjectionService {
      * Returns map with projectedValue, gap, requiredSip, onTrack.
      */
     public Map<String, Object> project(FinancialGoal goal) {
-        long months = ChronoUnit.MONTHS.between(LocalDate.now(), goal.getTargetDate());
-        if (months <= 0) return Map.of("projectedValue", BigDecimal.ZERO, "gap", goal.getTargetAmount(), "onTrack", false);
+        long t0 = System.currentTimeMillis();
+        log.info("[Goals] ▶ Deterministic projection  goal='{}' target=₹{} targetDate={}",
+            goal.getName(), goal.getTargetAmount(), goal.getTargetDate());
+        long months = goal.getTargetDate() != null
+            ? ChronoUnit.MONTHS.between(LocalDate.now(), goal.getTargetDate())
+            : 240L; // default 20 years if no date set
+        if (months <= 0) {
+            // Past-due: return zeroed projection WITH monthsRemaining=0 so frontend knows
+            Map<String, Object> pastDue = new java.util.LinkedHashMap<>();
+            pastDue.put("projectedValue",  BigDecimal.ZERO);
+            pastDue.put("gap",             goal.getTargetAmount() != null ? goal.getTargetAmount() : BigDecimal.ZERO);
+            pastDue.put("onTrack",         false);
+            pastDue.put("monthsRemaining", 0L);
+            pastDue.put("fvCorpus",        BigDecimal.ZERO);
+            pastDue.put("fvSip",           BigDecimal.ZERO);
+            pastDue.put("requiredSip",     goal.getTargetAmount() != null ? goal.getTargetAmount() : BigDecimal.ZERO);
+            return pastDue;
+        }
 
         double r = (goal.getExpectedReturn() != null ? goal.getExpectedReturn().doubleValue() : 12.0) / 100.0;
         double monthlyR = r / 12.0;
@@ -53,14 +72,26 @@ public class GoalProjectionService {
             requiredSip = gap / (((Math.pow(1 + monthlyR, n) - 1) / monthlyR) * (1 + monthlyR));
         }
 
+        // Capture values for logging before building return map
+        BigDecimal projectedBd   = bd(projected);
+        BigDecimal gapBd         = bd(gap);
+        boolean    onTrack       = gap <= 0;
+        BigDecimal requiredSipBd = bd(sip + Math.max(0, requiredSip));
+        long       monthsRem     = (long) n;
+        BigDecimal fvCorpusBd    = bd(fvCorpus);
+        BigDecimal fvSipBd       = bd(fvSip);
+
+        log.info("[Goals] ✔ Projection done in {}ms  projected=₹{} gap=₹{} onTrack={}",
+            System.currentTimeMillis() - t0, projectedBd, gapBd, onTrack);
+
         return Map.of(
-            "projectedValue",  bd(projected),
-            "gap",             bd(gap),
-            "onTrack",         gap <= 0,
-            "requiredSip",     bd(sip + Math.max(0, requiredSip)),
-            "monthsRemaining", (long) n,
-            "fvCorpus",        bd(fvCorpus),
-            "fvSip",           bd(fvSip)
+            "projectedValue",  projectedBd,
+            "gap",             gapBd,
+            "onTrack",         onTrack,
+            "requiredSip",     requiredSipBd,
+            "monthsRemaining", monthsRem,
+            "fvCorpus",        fvCorpusBd,
+            "fvSip",           fvSipBd
         );
     }
 
@@ -69,6 +100,9 @@ public class GoalProjectionService {
      * Expected monthly return derived from annual rate. SD estimated from category.
      */
     public Map<String, Object> monteCarlo(FinancialGoal goal) {
+        long t0 = System.currentTimeMillis();
+        log.info("[Goals] ▶ Monte Carlo simulation  goal='{}' simulations={}",
+            goal.getName(), MC_SIMULATIONS);
         long months = ChronoUnit.MONTHS.between(LocalDate.now(), goal.getTargetDate());
         if (months <= 0) return Map.of("probability", 0.0, "p50", 0.0, "p5", 0.0, "p95", 0.0);
 
@@ -96,12 +130,22 @@ public class GoalProjectionService {
         long success = java.util.Arrays.stream(outcomes).filter(v -> v >= target).count();
         double probability = (double) success / MC_SIMULATIONS * 100;
 
+        // Capture values for logging before building return map
+        double      prob = Math.round(probability * 10.0) / 10.0;
+        BigDecimal  p5   = bd(outcomes[(int)(MC_SIMULATIONS * 0.05)]);
+        BigDecimal  p50  = bd(outcomes[(int)(MC_SIMULATIONS * 0.50)]);
+        BigDecimal  p95  = bd(outcomes[(int)(MC_SIMULATIONS * 0.95)]);
+        int         sims = MC_SIMULATIONS;
+
+        log.info("[Goals] ✔ Monte Carlo done in {}ms  probability={}% p50=₹{}",
+            System.currentTimeMillis() - t0, prob, p50);
+
         return Map.of(
-            "probability",  Math.round(probability * 10.0) / 10.0,
-            "p5",           bd(outcomes[(int)(MC_SIMULATIONS * 0.05)]),
-            "p50",          bd(outcomes[(int)(MC_SIMULATIONS * 0.50)]),
-            "p95",          bd(outcomes[(int)(MC_SIMULATIONS * 0.95)]),
-            "simulations",  MC_SIMULATIONS
+            "probability",  prob,
+            "p5",           p5,
+            "p50",          p50,
+            "p95",          p95,
+            "simulations",  sims
         );
     }
 
